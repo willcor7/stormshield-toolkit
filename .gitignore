@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Tool output: may describe a real network, never commit it
+output/
+reference_files/
+suite/output/
+suite/reference_files/
+vpn_config_smc.json
+report.json
+report.md
+*.log

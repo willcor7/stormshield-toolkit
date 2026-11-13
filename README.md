@@ -1,91 +1,98 @@
-# Outils de Gestion pour Firewall Stormshield
+# Stormshield Toolkit
 
-Cette suite d'outils Python est conçue pour automatiser et simplifier la gestion des règles de firewall sur les équipements Stormshield. Elle permet d'exporter, de convertir, de valider, de comparer et de détecter les doublons dans les configurations de filtrage.
+Python tools that automate repetitive work on Stormshield Network Security (SNS) firewalls: preparing filter and NAT rules, reviewing a policy for inconsistencies, turning logs into flows, and extracting IPsec VPN configuration.
 
-## Flux de travail et Outils
+They were written for day-to-day firewall operations where the same tasks come back every week and a typo in a rule has real consequences. Every tool produces a file a human reviews before anything is applied to a firewall.
 
-Les scripts sont conçus pour être utilisés de manière modulaire :
+All sample data in this repository is fictitious (private and documentation IP ranges, invented host names).
 
-1.  **`exporter.py`** : Extrait les règles de filtrage et autres configurations depuis un équipement Stormshield via SSH et les sauvegarde dans des fichiers texte.
-2.  **`converter.py`** : Prend un ou plusieurs fichiers CSV de règles et les convertit en commandes NSRPC (CLI Stormshield). Il valide les dépendances (objets, interfaces), gère les différences entre les règles de filtrage et de NAT, et peut même créer des objets hôtes manquants. Il peut traiter les fichiers CSV de manière entrelacée pour conserver la séquence des règles.
-3.  **`rule_comparator.py`** : Compare un jeu de règles source à un jeu de règles final pour identifier et générer les commandes des règles manquantes, en utilisant la même logique de construction de commandes que le convertisseur.
-4.  **`duplicate_detector.py`** : Analyse un ou plusieurs fichiers CSV pour trouver des règles en double en se basant sur une signature (source, destination, port, protocole) et génère un rapport des doublons trouvés.
+## What is in the repository
 
----
+| Folder | Tool | What it does |
+|---|---|---|
+| [`suite/`](suite/) | Interactive suite | One menu for five tasks: analyze logs, export objects and interfaces over SSH, convert CSV rules to SNS CLI (NSRPC) commands, compare two rule sets, detect duplicate rules. |
+| [`rule_analyzer/`](rule_analyzer/) | Rule analyzer | Reads a policy exported as CSV and reports shadowed rules, duplicates, conflicts and partial overlaps. Standard library only. |
+| [`vpn_extractor/`](vpn_extractor/) | IPsec VPN extractor | Reads active tunnels and peer settings from a firewall and writes a JSON file prepared for import into Stormshield Management Center (SMC). |
+| [`examples/`](examples/) | Sample data | Fictitious logs, rules and objects, with the output each tool produces from them. |
 
-## Prérequis et Installation
+## Quick start
 
-### 1. Python
-Assurez-vous que **Python 3.8+** est installé sur votre machine.
+Python 3.8 or later.
 
-### 2. Dépendances (Installation hors ligne)
-Certains scripts (comme `exporter.py`) nécessitent la bibliothèque `paramiko`. Si vous devez l'installer sur un système sans accès à Internet, suivez la procédure ci-dessous.
-
-<details>
-<summary><b>Cliquez pour voir les instructions d'installation hors ligne de Paramiko</b></summary>
-
-Ce guide explique comment télécharger **Paramiko** et ses dépendances pour une installation sur une machine cible spécifique.
-
-#### Étape 1 : Téléchargement des paquets (Machine en ligne)
-Sur une machine avec accès à Internet, exécutez la commande suivante pour télécharger tous les paquets nécessaires dans un dossier `wheelhouse`.
 ```bash
-python3 -m pip download --dest ./wheelhouse "paramiko"
+git clone https://github.com/willcor7/stormshield-toolkit.git
+cd stormshield-toolkit
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-#### Étape 2 : Installation sur la machine cible (Hors ligne)
-1.  Transférez le dossier `wheelhouse` sur la machine cible.
-2.  **Installez les paquets** depuis les fichiers locaux.
-    ```bash
-    # L'option --no-index empêche la connexion à Internet
-    # L'option --find-links indique à pip où trouver les paquets
-    python3 -m pip install --no-index --find-links=./wheelhouse paramiko
-    ```
-Votre bibliothèque est maintenant prête à être utilisée.
-</details>
+### Review a policy for inconsistencies
 
----
+No firewall access needed; this runs on the sample files.
 
-## Utilisation Détaillée des Scripts
-
-### `converter.py`
-Convertit les règles de firewall d'un fichier CSV en commandes NSRPC.
 ```bash
-python3 converter.py --csv <path_to_input.csv> [options]
+cd rule_analyzer
+python detect_stormshield_anomalies.py \
+  --rules ../examples/rules/rules.csv \
+  --objects ../examples/rules/objects.csv \
+  --out report.json --md report.md
 ```
-**Arguments principaux :**
--   `--csv PATH` : (Requis) Un ou plusieurs fichiers CSV d'entrée.
--   `--objects-file PATH` : Fichier listant les objets existants pour la validation.
--   `--interfaces-file PATH` : Fichier listant les interfaces existantes.
--   `--output-directory DIR` : Répertoire de sortie.
--   `--create-hosts` : Active la création automatique des objets hôtes.
--   `--activate` : Ajoute la commande `CONFIG FILTER ACTIVATE`.
 
-### `rule_comparator.py`
-Compare des ensembles de règles et génère les commandes pour les règles manquantes.
-```bash
-python3 rule_comparator.py --source <source.csv> --final <final.csv> --output <commands.cli>
-```
-**Arguments :**
--   `--source PATH`: (Requis, multiple) Fichier(s) CSV source.
--   `--final PATH`: (Requis) Fichier CSV de référence.
--   `--output PATH`: (Requis) Fichier de sortie pour les commandes.
+The result on the sample policy ([full report](examples/rules/sample_report.md)):
 
-### `duplicate_detector.py`
-Détecte les règles en double dans un ou plusieurs fichiers CSV.
-```bash
-python3 duplicate_detector.py --csv <fichier1.csv> <fichier2.csv>
-```
-**Argument :**
--   `--csv PATH`: (Requis, multiple) Fichier(s) CSV à analyser.
+| Category | Count |
+|---|---:|
+| Shadowed (same action) | 1 |
+| Duplicates | 1 |
+| Conflicts | 3 |
+| Partial overlaps | 1 |
+| Disabled rules | 1 |
 
-### `exporter.py`
-Exporte la configuration d'un équipement Stormshield.
+### Run the interactive suite
+
 ```bash
-python3 exporter.py --host <ip_firewall> --user <utilisateur> --output-prefix <prefixe_fichier>
+cd suite
+python main.py
 ```
-**Arguments principaux :**
--   `--host HOST`: (Requis) Adresse IP de l'équipement.
--   `--user USER`: Nom d'utilisateur (défaut: `admin`).
--   `--output-prefix PREFIX`: (Requis) Préfixe pour les noms des fichiers de sortie.
--   `--output-dir DIR`: Répertoire de sortie.
--   `--collect-*`: Divers flags pour collecter des informations spécifiques (sfctl, dhcp, etc.).
+
+Option 1 (log analysis) works on `examples/logs/sample_logs.csv`. It groups log lines into unique flows (source, destination, service) and writes a detailed CSV plus a summary of the top flows, which is the starting point for writing the right rule. Options 2 to 5 are described in [`suite/README.md`](suite/README.md).
+
+### Extract IPsec VPN configuration
+
+```bash
+cd vpn_extractor
+python sns_vpn_extractor.py --host <firewall-ip> --user <admin-user>
+```
+
+The password is asked interactively. See [`vpn_extractor/README.md`](vpn_extractor/README.md).
+
+## How the rule conversion stays safe
+
+The CSV to CLI converter does not push anything to a firewall. It checks each rule against the objects and interfaces exported from the target firewall and splits the result into three files:
+
+- `rules_safe.txt`: commands for rules whose dependencies all exist;
+- `rules_pending.txt`: rules held back, with the reason;
+- `dependencies_missing.txt`: the objects and interfaces to create first.
+
+An engineer reads the generated script before running it. Samples of these files are in [`examples/suite_output/`](examples/suite_output/).
+
+## Tests
+
+```bash
+cd rule_analyzer && python -m unittest test_detector
+cd ../vpn_extractor && python -m unittest discover -s tests
+```
+
+The tests use inline sample data and mocks; they do not need a firewall.
+
+## Good practice when using these tools
+
+- Do not commit real exports, logs or generated scripts: they describe a production network. The `.gitignore` excludes the default output folders.
+- Leave the password empty in `suite/config.ini`; the tools prompt for it.
+- Run generated scripts on a test or standby firewall first when you can.
+
+## Status
+
+Working tools, used in operations, shared as they are. The suite keeps its logic in a single module (`suite/tool_functions.py`); splitting it into smaller modules with their own tests is the next cleanup step.
+
+This project is independent and is not affiliated with or endorsed by Stormshield.

@@ -1,0 +1,6 @@
+# Interactive suite
+pandas
+paramiko
+
+# vpn_extractor also needs Stormshield's SSL client:
+#   pip install stormshield.sns.sslclient

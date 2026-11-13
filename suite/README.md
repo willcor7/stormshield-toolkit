@@ -1,4 +1,4 @@
-# Stormshield All-in-One Suite
+# Stormshield interactive suite
 
 ## 1. Overview
 
@@ -105,7 +105,7 @@ firewall_password =
 
 ## 4. How to Run
 
-1.  Navigate to the `stormshield_suite/all_in_one/` directory in your terminal.
+1.  Navigate to the `suite/` directory in your terminal.
 2.  Run the main script:
     ```sh
     python main.py

@@ -1,0 +1,7 @@
+#type_slot,#rule_name,#state,#action,#from_src,#to_dest,#service,#proto,#comment
+separator,,,,,,,,Web tier
+rule,allow_web_from_lan,on,pass,10.0.0.0/24,srv_web,web,tcp,LAN to web server
+rule,allow_http_from_admin,on,pass,10.0.0.10,srv_web,http,tcp,Shadowed by allow_web_from_lan
+rule,allow_web_from_lan_copy,on,pass,10.0.0.0/24,srv_web,web,tcp,Duplicate of allow_web_from_lan
+rule,block_lan_to_servers,on,block,10.0.0.0/8,192.168.0.0/16,any,tcp,Conflicts with the allowed web flows
+rule,legacy_any_any,off,pass,any,any,any,any,Disabled rule
